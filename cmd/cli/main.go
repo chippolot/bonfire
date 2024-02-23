@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -37,7 +38,14 @@ func main() {
 			if err != nil {
 				panic(err)
 			}
-			fmt.Println(result.Lore)
+
+			jsonData, err := json.MarshalIndent(result.Entity, "", " ")
+			if err != nil {
+				panic(err)
+			}
+			jsonString := string(jsonData)
+
+			fmt.Println(jsonString)
 			return nil
 		},
 	}

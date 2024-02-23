@@ -2,46 +2,44 @@ package bonfire
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"math/rand"
-	"strings"
 
 	"github.com/sashabaranov/go-openai"
 )
 
 type Result struct {
-	Lore string
-}
-
-var entityTypes = []string{
-	"character",
-	"item",
-	"location",
-	"faction",
-	"event",
+	Entity Entity
 }
 
 func Generate(openAIToken string) (Result, error) {
-	const promptFormat string = "Generate a dark souls-like %s json entry. " +
-		"Json fields: 'name', 'id' (snake case), 'type' (snake case), 'lore' (500 chars max)." +
-		"Valid types are: %s." +
-		"In the lore wrap any references to other entities in <ref id=''></ref> tags."
+	const promptFormat string = "Generate a dark souls-like %s json entity. " +
+		"Json fields: 'name', 'id' (snake case), 'type' (snake case), 'lore' (500 chars max). " +
+		"Valid types: %s." +
+		"In the lore wrap any references to other entities in <ref id=''></ref> tags ."
 
-	validEntityTypes := "'" + strings.Join(entityTypes, "', '") + "'"
-	prompt := fmt.Sprintf(promptFormat, randomEntityType(), validEntityTypes)
+	validEntityTypes, _ := json.Marshal(AllEntityTypes)
+	prompt := fmt.Sprintf(promptFormat, RandomEntityType(), validEntityTypes)
 
-	// Generate lore
-	lore, err := queryLLM(openAIToken, prompt)
+	// Generate entity
+	jsonData, err := queryLLM(openAIToken, prompt)
 	if err != nil {
 		return Result{}, err
 	}
 
-	return Result{Lore: lore}, nil
-}
+	// Parse entity
+	var e Entity
+	err = json.Unmarshal([]byte(jsonData), &e)
+	if err != nil {
+		return Result{}, err
+	}
 
-func randomEntityType() string {
-	entityIdx := rand.Intn(len(entityTypes))
-	return entityTypes[entityIdx]
+	// Validate entity
+	if err = e.validate(); err != nil {
+		return Result{}, err
+	}
+
+	return Result{Entity: e}, nil
 }
 
 func queryLLM(token string, prompt string) (string, error) {
