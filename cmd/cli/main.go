@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -39,7 +38,7 @@ func main() {
 				panic(err)
 			}
 
-			jsonData, err := json.MarshalIndent(result.Entity, "", " ")
+			jsonData, err := result.Entity.JSON()
 			if err != nil {
 				panic(err)
 			}
