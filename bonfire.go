@@ -2,6 +2,9 @@ package bonfire
 
 import (
 	"context"
+	"fmt"
+	"math/rand"
+	"strings"
 
 	"github.com/sashabaranov/go-openai"
 )
@@ -10,10 +13,22 @@ type Result struct {
 	Lore string
 }
 
+var entityTypes = []string{
+	"character",
+	"item",
+	"location",
+	"faction",
+	"event",
+}
+
 func Generate(openAIToken string) (Result, error) {
-	const prompt string = "Generate lore for a demi-god from a game like dark souls or elden ring. " +
-		"The description should just be a fragment and leave the reader with more questions than it answers. " +
-		"It may hint at or reference locations or characters which are part of the broader mythos."
+	const promptFormat string = "Generate a dark souls-like %s json entry. " +
+		"Json fields: 'name', 'id' (snake case), 'type' (snake case), 'lore' (500 chars max)." +
+		"Valid types are: %s." +
+		"In the lore wrap any references to other entities in <ref id=''></ref> tags."
+
+	validEntityTypes := "'" + strings.Join(entityTypes, "', '") + "'"
+	prompt := fmt.Sprintf(promptFormat, randomEntityType(), validEntityTypes)
 
 	// Generate lore
 	lore, err := queryLLM(openAIToken, prompt)
@@ -22,6 +37,11 @@ func Generate(openAIToken string) (Result, error) {
 	}
 
 	return Result{Lore: lore}, nil
+}
+
+func randomEntityType() string {
+	entityIdx := rand.Intn(len(entityTypes))
+	return entityTypes[entityIdx]
 }
 
 func queryLLM(token string, prompt string) (string, error) {
@@ -36,6 +56,7 @@ func queryLLM(token string, prompt string) (string, error) {
 					Content: prompt,
 				},
 			},
+			ResponseFormat: &openai.ChatCompletionResponseFormat{Type: openai.ChatCompletionResponseFormatTypeJSONObject},
 		},
 	)
 
