@@ -68,7 +68,7 @@ func main() {
 
 			fmt.Println("Found References:")
 			result.Entity.ParseReferences(func(match string, id string, inner string) string {
-				fmt.Printf("id: %s, text: %s\n", id, inner)
+				fmt.Printf("id: %s, text: %s, full: %s\n", id, inner, match)
 				return match
 			})
 			return nil
