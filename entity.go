@@ -17,6 +17,16 @@ type Entity struct {
 	CreatedAt time.Time
 }
 
+type EntityReferenceHint struct {
+	Id        string
+	ShortDesc string `json:"short_desc"`
+}
+
+type UnknownReference struct {
+	Id                  string
+	ReferencingEntityId string
+}
+
 func (e *Entity) validate() error {
 	if !IsValidEntityType(string(e.Type)) {
 		return fmt.Errorf("invalid entity type: %s", e.Type)

@@ -16,23 +16,7 @@ import (
 //go:embed res/sys_prompt.txt
 var ResourcesFS embed.FS
 
-type UnknownReference struct {
-	Id                  string
-	ReferencingEntityId string
-}
-
 type Options struct {
-}
-
-type DataStore interface {
-	GetEntityById(id string) (*Entity, error)
-	GetEntitiesByType(entityType EntityType) ([]*Entity, error)
-	GetReferencedEntities(id string) ([]*Entity, error)
-	GetUnknownReferences() ([]*UnknownReference, error)
-
-	AddEntity(e *Entity) error
-
-	Close() error
 }
 
 type Result struct {
