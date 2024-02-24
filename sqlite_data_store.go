@@ -74,7 +74,8 @@ func createTables(db *sql.DB) error {
 
 		-- UnknownReference table
 		CREATE TABLE IF NOT EXISTS UnknownReference (
-			UnknownReferenceId TEXT PRIMARY KEY,
+			UnknownReferenceId INTEGER PRIMARY KEY AUTOINCREMENT,
+			Id TEXT NOT NULL,
 			ReferencingEntityId INTEGER,
 			FOREIGN KEY (ReferencingEntityId) REFERENCES Entity(EntityId)
 		);
