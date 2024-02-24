@@ -11,7 +11,8 @@ type Entity struct {
 	Name      string
 	Id        string
 	Type      EntityType
-	Lore      string
+	ShortDesc string `json:"short_desc"`
+	LongDesc  string `json:"long_desc"`
 	CreatedAt time.Time
 }
 

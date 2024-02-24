@@ -2,12 +2,18 @@ package bonfire
 
 import (
 	"context"
+	"embed"
 	"encoding/json"
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/sashabaranov/go-openai"
 )
+
+//go:embed res/usr_prompt.txt
+//go:embed res/sys_prompt.txt
+var ResourcesFS embed.FS
 
 type UnknownReference struct {
 	Id                  string
@@ -30,16 +36,22 @@ type Result struct {
 }
 
 func Generate(openAIToken string, dataStore DataStore) (Result, error) {
-	const promptFormat string = "Generate a unique dark souls-like %s json entity. " +
-		"Json fields: 'name', 'id' (snake case), 'type' (snake case), 'lore' (500 chars max). " +
-		"Valid types: %s." +
-		"Wrap any references to other entities in <ref id=''/> tags ."
 
+	sysPrompt, err := readEmbeddedFileText("res/sys_prompt.txt")
+	if err != nil {
+		return Result{}, err
+	}
 	validEntityTypes, _ := json.Marshal(AllEntityTypes)
-	prompt := fmt.Sprintf(promptFormat, RandomEntityType(), validEntityTypes)
+	sysPrompt = fmt.Sprintf(sysPrompt, validEntityTypes)
+
+	usrPrompt, err := readEmbeddedFileText("res/usr_prompt.txt")
+	if err != nil {
+		return Result{}, err
+	}
+	usrPrompt = fmt.Sprintf(usrPrompt, RandomEntityType())
 
 	// Generate entity
-	jsonData, err := queryLLM(openAIToken, prompt)
+	jsonData, err := queryLLM(openAIToken, sysPrompt, usrPrompt)
 	if err != nil {
 		return Result{}, err
 	}
@@ -60,7 +72,7 @@ func Generate(openAIToken string, dataStore DataStore) (Result, error) {
 	return Result{Entity: e}, nil
 }
 
-func queryLLM(token string, prompt string) (string, error) {
+func queryLLM(token string, systemPrompt string, userPrompt string) (string, error) {
 	client := openai.NewClient(token)
 	resp, err := client.CreateChatCompletion(
 		context.Background(),
@@ -68,8 +80,12 @@ func queryLLM(token string, prompt string) (string, error) {
 			Model: openai.GPT4TurboPreview,
 			Messages: []openai.ChatCompletionMessage{
 				{
+					Role:    openai.ChatMessageRoleSystem,
+					Content: systemPrompt,
+				},
+				{
 					Role:    openai.ChatMessageRoleUser,
-					Content: prompt,
+					Content: userPrompt,
 				},
 			},
 			ResponseFormat: &openai.ChatCompletionResponseFormat{Type: openai.ChatCompletionResponseFormatTypeJSONObject},
@@ -81,4 +97,19 @@ func queryLLM(token string, prompt string) (string, error) {
 	}
 
 	return resp.Choices[0].Message.Content, nil
+}
+
+func readEmbeddedFileText(path string) (string, error) {
+	file, err := ResourcesFS.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	data, err := io.ReadAll(file)
+	if err != nil {
+		return "", err
+	}
+
+	return string(data), nil
 }

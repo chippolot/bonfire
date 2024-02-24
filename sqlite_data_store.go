@@ -69,7 +69,8 @@ func createTables(db *sql.DB) error {
 			Name TEXT NOT NULL,
 			EntityType TEXT NOT NULL,
 			Id TEXT NOT NULL,
-			Lore TEXT
+			ShortDesc TEXT
+			LongDesc TEXT
 		);
 
 		-- UnknownReference table
