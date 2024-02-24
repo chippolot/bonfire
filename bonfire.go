@@ -4,19 +4,36 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/sashabaranov/go-openai"
 )
+
+type UnknownReference struct {
+	Id                  string
+	ReferencingEntityId string
+}
+
+type DataStore interface {
+	GetEntityById(id string) (*Entity, error)
+	GetEntitiesByType(entityType EntityType) ([]*Entity, error)
+	GetReferencedEntities(id string) ([]*Entity, error)
+	GetUnknownReferences() ([]*UnknownReference, error)
+
+	AddEntity(e *Entity) error
+
+	Close() error
+}
 
 type Result struct {
 	Entity Entity
 }
 
-func Generate(openAIToken string) (Result, error) {
-	const promptFormat string = "Generate a dark souls-like %s json entity. " +
+func Generate(openAIToken string, dataStore DataStore) (Result, error) {
+	const promptFormat string = "Generate a unique dark souls-like %s json entity. " +
 		"Json fields: 'name', 'id' (snake case), 'type' (snake case), 'lore' (500 chars max). " +
 		"Valid types: %s." +
-		"In the lore wrap any references to other entities in <ref id=''></ref> tags ."
+		"Wrap any references to other entities in <ref id=''/> tags ."
 
 	validEntityTypes, _ := json.Marshal(AllEntityTypes)
 	prompt := fmt.Sprintf(promptFormat, RandomEntityType(), validEntityTypes)
@@ -33,6 +50,7 @@ func Generate(openAIToken string) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
+	e.CreatedAt = time.Now().UTC()
 
 	// Validate entity
 	if err = e.validate(); err != nil {

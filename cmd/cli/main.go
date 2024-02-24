@@ -33,7 +33,9 @@ func main() {
 		},
 		Action: func(ctx *cli.Context) error {
 			token := ctx.String("token")
-			result, err := bonfire.Generate(token)
+			dataStore := bonfire.MakeSqliteDataStore()
+
+			result, err := bonfire.Generate(token, dataStore)
 			if err != nil {
 				panic(err)
 			}

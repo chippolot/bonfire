@@ -4,13 +4,15 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"time"
 )
 
 type Entity struct {
-	Name string
-	Id   string
-	Type EntityType
-	Lore string
+	Name      string
+	Id        string
+	Type      EntityType
+	Lore      string
+	CreatedAt time.Time
 }
 
 func (e *Entity) validate() error {
