@@ -17,7 +17,6 @@ func init() {
 }
 
 func main() {
-
 	app := &cli.App{
 		Name:  "bonfire",
 		Usage: "generates soulslike lore",
@@ -30,12 +29,21 @@ func main() {
 				Required: false,
 				EnvVars:  []string{"OPENAI_API_KEY"},
 			},
+			&cli.BoolFlag{
+				Name:     "show-prompts",
+				Aliases:  []string{"p"},
+				Value:    false,
+				Usage:    "If true, prompts will be displayed in output",
+				Required: false,
+			},
 		},
 		Action: func(ctx *cli.Context) error {
 			token := ctx.String("token")
+			showPrompts := ctx.Bool("show-prompts")
 			dataStore := bonfire.MakeSqliteDataStore()
+			opts := bonfire.Options{}
 
-			result, err := bonfire.Generate(token, dataStore)
+			result, err := bonfire.Generate(token, dataStore, opts)
 			if err != nil {
 				panic(err)
 			}
@@ -46,7 +54,23 @@ func main() {
 			}
 			jsonString := string(jsonData)
 
+			if showPrompts {
+				fmt.Println("System Prompt:")
+				fmt.Println(result.Prompts[0])
+				fmt.Println()
+				fmt.Println("User Prompt:")
+				fmt.Println(result.Prompts[1])
+				fmt.Println()
+			}
+			fmt.Println("Entity:")
 			fmt.Println(jsonString)
+			fmt.Println()
+
+			fmt.Println("Found References:")
+			result.Entity.ParseReferences(func(match string, id string, inner string) string {
+				fmt.Printf("id: %s, text: %s\n", id, inner)
+				return match
+			})
 			return nil
 		},
 	}

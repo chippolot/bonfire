@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"time"
 )
 
@@ -30,4 +31,17 @@ func (t *Entity) JSON() ([]byte, error) {
 	encoder.SetIndent("", "  ")
 	err := encoder.Encode(t)
 	return buffer.Bytes(), err
+}
+
+func (e *Entity) ParseReferences(replacer func(fullMatch, id, innerText string) string) string {
+	re := regexp.MustCompile(`<ref id=["']([^"']+)["']>([^<]+)</ref>`)
+	return re.ReplaceAllStringFunc(e.LongDesc, func(fullMatch string) string {
+		matches := re.FindStringSubmatch(fullMatch)
+		if len(matches) != 3 {
+			return fullMatch
+		}
+		id := matches[1]
+		innerText := matches[2]
+		return replacer(fullMatch, id, innerText)
+	})
 }

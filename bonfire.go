@@ -8,6 +8,7 @@ import (
 	"io"
 	"time"
 
+	"github.com/mroth/weightedrand/v2"
 	"github.com/sashabaranov/go-openai"
 )
 
@@ -18,6 +19,9 @@ var ResourcesFS embed.FS
 type UnknownReference struct {
 	Id                  string
 	ReferencingEntityId string
+}
+
+type Options struct {
 }
 
 type DataStore interface {
@@ -32,23 +36,16 @@ type DataStore interface {
 }
 
 type Result struct {
-	Entity Entity
+	Prompts []string
+	Entity  Entity
 }
 
-func Generate(openAIToken string, dataStore DataStore) (Result, error) {
-
-	sysPrompt, err := readEmbeddedFileText("res/sys_prompt.txt")
+func Generate(openAIToken string, dataStore DataStore, opts Options) (Result, error) {
+	// Generare prompts
+	sysPrompt, usrPrompt, err := generatePrompts()
 	if err != nil {
 		return Result{}, err
 	}
-	validEntityTypes, _ := json.Marshal(AllEntityTypes)
-	sysPrompt = fmt.Sprintf(sysPrompt, validEntityTypes)
-
-	usrPrompt, err := readEmbeddedFileText("res/usr_prompt.txt")
-	if err != nil {
-		return Result{}, err
-	}
-	usrPrompt = fmt.Sprintf(usrPrompt, RandomEntityType())
 
 	// Generate entity
 	jsonData, err := queryLLM(openAIToken, sysPrompt, usrPrompt)
@@ -69,7 +66,36 @@ func Generate(openAIToken string, dataStore DataStore) (Result, error) {
 		return Result{}, err
 	}
 
-	return Result{Entity: e}, nil
+	return Result{
+		Prompts: []string{sysPrompt, usrPrompt},
+		Entity:  e,
+	}, nil
+}
+
+func generatePrompts() (string, string, error) {
+	sysPrompt, err := readEmbeddedFileText("res/sys_prompt.txt")
+	if err != nil {
+		return "", "", err
+	}
+	validEntityTypes, _ := json.Marshal(AllEntityTypes)
+	sysPrompt = fmt.Sprintf(sysPrompt, validEntityTypes)
+
+	usrPrompt, err := readEmbeddedFileText("res/usr_prompt.txt")
+	if err != nil {
+		return "", "", err
+	}
+	usrPrompt = fmt.Sprintf(usrPrompt, RandomEntityType())
+
+	// Determine number of references
+	chooser, _ := weightedrand.NewChooser(
+		weightedrand.NewChoice(1, 3),
+		weightedrand.NewChoice(2, 2),
+		weightedrand.NewChoice(3, 1),
+	)
+	numReferences := chooser.Pick()
+	usrPrompt += fmt.Sprintf("\nInclude %d references to other entities.", numReferences)
+
+	return sysPrompt, usrPrompt, nil
 }
 
 func queryLLM(token string, systemPrompt string, userPrompt string) (string, error) {
