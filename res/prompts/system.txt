@@ -29,5 +29,6 @@ You are a creative assistant designed to generate JSON responses matching the fo
   "required": ["entity", "references"]
 }
 Entity refs should appear in BOTH the long_desc and the references array.
+Entities do not need to reference themselves.
 In the long_desc, wrap all refs in <ref id=''> tags.
 ids should be maximally specific. For example, <ref id='eldric'>The Fallen Knight, Eldric</ref>

@@ -3,6 +3,7 @@ package bonfire
 import (
 	"embed"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/chippolot/bonfire/internal/llm"
@@ -41,12 +42,14 @@ func Generate(promptType PromptType, openAIToken string, dataStore DataStore, op
 	// Generare prompts
 	sysPrompt, usrPrompt, err := generatePrompts(promptType, style, &ResourcesFS)
 	if err != nil {
+		fmt.Println("Error generating prompts:")
 		return GenerateResult{}, err
 	}
 
 	// Generate response
 	jsonData, err := llm.Query(openAIToken, sysPrompt, usrPrompt)
 	if err != nil {
+		fmt.Println("Error generating response:")
 		return GenerateResult{}, err
 	}
 
@@ -54,12 +57,20 @@ func Generate(promptType PromptType, openAIToken string, dataStore DataStore, op
 	var r Response
 	err = json.Unmarshal([]byte(jsonData), &r)
 	if err != nil {
+		fmt.Println("Error parsing response:")
 		return GenerateResult{}, err
 	}
 	r.Entity.CreatedAt = time.Now().UTC()
 
 	// Validate response
 	if err = r.validate(); err != nil {
+		fmt.Println("Error validating response:")
+		return GenerateResult{}, err
+	}
+
+	// Add entity to db
+	if err = dataStore.AddEntity(r.Entity); err != nil {
+		fmt.Println("Error adding entity to db:")
 		return GenerateResult{}, err
 	}
 
