@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/chippolot/bonfire"
+	"github.com/chippolot/bonfire/internal/util"
 	"github.com/joho/godotenv"
 	"github.com/urfave/cli/v2"
 )
@@ -29,6 +30,13 @@ func main() {
 				Required: false,
 				EnvVars:  []string{"OPENAI_API_KEY"},
 			},
+			&cli.StringFlag{
+				Name:     "prompt-type",
+				Aliases:  []string{"pt"},
+				Value:    "entity",
+				Usage:    "Type of prompt to generate",
+				Required: true,
+			},
 			&cli.BoolFlag{
 				Name:     "show-prompts",
 				Aliases:  []string{"p"},
@@ -39,20 +47,19 @@ func main() {
 		},
 		Action: func(ctx *cli.Context) error {
 			token := ctx.String("token")
+			promptTypeStr := ctx.String("prompt-type")
+			promptType, err := bonfire.ParsePromptType(promptTypeStr)
+			if err != nil {
+				panic(err)
+			}
 			showPrompts := ctx.Bool("show-prompts")
 			dataStore := bonfire.MakeSqliteDataStore()
 			opts := bonfire.Options{}
 
-			result, err := bonfire.Generate(token, dataStore, opts)
+			result, err := bonfire.Generate(promptType, token, dataStore, opts)
 			if err != nil {
 				panic(err)
 			}
-
-			jsonData, err := result.Entity.JSON()
-			if err != nil {
-				panic(err)
-			}
-			jsonString := string(jsonData)
 
 			if showPrompts {
 				fmt.Println("System Prompt:")
@@ -62,15 +69,15 @@ func main() {
 				fmt.Println(result.Prompts[1])
 				fmt.Println()
 			}
-			fmt.Println("Entity:")
+
+			jsonString, err := util.MarshalJsonNoHtmlEscape(result.Response)
+			if err != nil {
+				panic(err)
+			}
+
+			fmt.Println("Response:")
 			fmt.Println(jsonString)
 			fmt.Println()
-
-			fmt.Println("Found References:")
-			result.Entity.ParseReferences(func(match string, id string, inner string) string {
-				fmt.Printf("id: %s, text: %s, full: %s\n", id, inner, match)
-				return match
-			})
 			return nil
 		},
 	}

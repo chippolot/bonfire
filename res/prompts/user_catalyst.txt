@@ -1,0 +1,3 @@
+Generate a unique 'event_catalyst' json entity for a new world in the style of %s. 
+The catalyst event should describe an important event which fundamentally changed the world and made the characters and locations that you will subsequently generate important. 
+Include 2 'location' refs, 3 'character' refs,  and 1 'relic' ref in the long_desc.

@@ -5,24 +5,34 @@ import "math/rand"
 type EntityType string
 
 const (
-	Character           = "character"
-	Item_Consumable     = "item_consumable"
-	Item_Key            = "item_key"
-	Equipment_Weapon    = "equipment_weapon"
-	Equipment_Armor     = "equipment_armor"
-	Equipment_Accessory = "equipment_accessory"
-	Location            = "location"
-	Faction             = "faction"
-	Event               = "event"
+	Character     = "character"
+	Item          = "item"
+	Relic         = "relic"
+	Equipment     = "equipment"
+	Location      = "location"
+	Faction       = "faction"
+	Event         = "event"
+	World         = "world"
+	EventCatalyst = "event_catalyst"
 )
 
 var AllEntityTypes = []EntityType{
 	Character,
-	Item_Consumable,
-	Item_Key,
-	Equipment_Weapon,
-	Equipment_Armor,
-	Equipment_Accessory,
+	Item,
+	Relic,
+	Equipment,
+	Location,
+	Faction,
+	Event,
+	World,
+	EventCatalyst,
+}
+
+var AllNonSingletonEntityTypes = []EntityType{
+	Character,
+	Item,
+	Relic,
+	Equipment,
 	Location,
 	Faction,
 	Event,
@@ -37,7 +47,7 @@ func IsValidEntityType(s string) bool {
 	return false
 }
 
-func RandomEntityType() EntityType {
-	entityIdx := rand.Intn(len(AllEntityTypes))
-	return AllEntityTypes[entityIdx]
+func RandomNonSingletonEntityType() EntityType {
+	entityIdx := rand.Intn(len(AllNonSingletonEntityTypes))
+	return AllNonSingletonEntityTypes[entityIdx]
 }

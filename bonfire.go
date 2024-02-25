@@ -1,125 +1,70 @@
 package bonfire
 
 import (
-	"context"
 	"embed"
 	"encoding/json"
-	"fmt"
-	"io"
 	"time"
 
-	"github.com/mroth/weightedrand/v2"
-	"github.com/sashabaranov/go-openai"
+	"github.com/chippolot/bonfire/internal/llm"
 )
 
-//go:embed res/usr_prompt.txt
-//go:embed res/sys_prompt.txt
+//go:embed res/prompts/system.txt
+//go:embed res/prompts/user_world.txt
+//go:embed res/prompts/user_catalyst.txt
+//go:embed res/prompts/user_entity.txt
 var ResourcesFS embed.FS
 
 type Options struct {
+	Style string
 }
 
-type Result struct {
-	Prompts []string
-	Entity  Entity
+type GenerateResult struct {
+	Prompts  []string
+	Response *Response
 }
 
-func Generate(openAIToken string, dataStore DataStore, opts Options) (Result, error) {
+type Response struct {
+	Entity     *Entity                `json:"entity"`
+	References []*EntityReferenceHint `json:"references"`
+}
+
+func (r *Response) validate() error {
+	return r.Entity.validate()
+}
+
+func Generate(promptType PromptType, openAIToken string, dataStore DataStore, opts Options) (GenerateResult, error) {
+	style := opts.Style
+	if style == "" {
+		style = "a dark souls-like game"
+	}
+
 	// Generare prompts
-	sysPrompt, usrPrompt, err := generatePrompts()
+	sysPrompt, usrPrompt, err := generatePrompts(promptType, style, &ResourcesFS)
 	if err != nil {
-		return Result{}, err
+		return GenerateResult{}, err
 	}
 
-	// Generate entity
-	jsonData, err := queryLLM(openAIToken, sysPrompt, usrPrompt)
+	// Generate response
+	jsonData, err := llm.Query(openAIToken, sysPrompt, usrPrompt)
 	if err != nil {
-		return Result{}, err
+		return GenerateResult{}, err
 	}
 
-	// Parse entity
-	var e Entity
-	err = json.Unmarshal([]byte(jsonData), &e)
+	// Parse response
+	var r Response
+	err = json.Unmarshal([]byte(jsonData), &r)
 	if err != nil {
-		return Result{}, err
+		return GenerateResult{}, err
 	}
-	e.CreatedAt = time.Now().UTC()
+	r.Entity.CreatedAt = time.Now().UTC()
 
-	// Validate entity
-	if err = e.validate(); err != nil {
-		return Result{}, err
+	// Validate response
+	if err = r.validate(); err != nil {
+		return GenerateResult{}, err
 	}
 
-	return Result{
-		Prompts: []string{sysPrompt, usrPrompt},
-		Entity:  e,
+	return GenerateResult{
+		Prompts:  []string{sysPrompt, usrPrompt},
+		Response: &r,
 	}, nil
-}
-
-func generatePrompts() (string, string, error) {
-	sysPrompt, err := readEmbeddedFileText("res/sys_prompt.txt")
-	if err != nil {
-		return "", "", err
-	}
-	validEntityTypes, _ := json.Marshal(AllEntityTypes)
-	sysPrompt = fmt.Sprintf(sysPrompt, validEntityTypes)
-
-	usrPrompt, err := readEmbeddedFileText("res/usr_prompt.txt")
-	if err != nil {
-		return "", "", err
-	}
-	usrPrompt = fmt.Sprintf(usrPrompt, RandomEntityType())
-
-	// Determine number of references
-	chooser, _ := weightedrand.NewChooser(
-		weightedrand.NewChoice(1, 3),
-		weightedrand.NewChoice(2, 2),
-		weightedrand.NewChoice(3, 1),
-	)
-	numReferences := chooser.Pick()
-	usrPrompt += fmt.Sprintf("\nInclude %d references to other entities.", numReferences)
-
-	return sysPrompt, usrPrompt, nil
-}
-
-func queryLLM(token string, systemPrompt string, userPrompt string) (string, error) {
-	client := openai.NewClient(token)
-	resp, err := client.CreateChatCompletion(
-		context.Background(),
-		openai.ChatCompletionRequest{
-			Model: openai.GPT4TurboPreview,
-			Messages: []openai.ChatCompletionMessage{
-				{
-					Role:    openai.ChatMessageRoleSystem,
-					Content: systemPrompt,
-				},
-				{
-					Role:    openai.ChatMessageRoleUser,
-					Content: userPrompt,
-				},
-			},
-			ResponseFormat: &openai.ChatCompletionResponseFormat{Type: openai.ChatCompletionResponseFormatTypeJSONObject},
-		},
-	)
-
-	if err != nil {
-		return "", err
-	}
-
-	return resp.Choices[0].Message.Content, nil
-}
-
-func readEmbeddedFileText(path string) (string, error) {
-	file, err := ResourcesFS.Open(path)
-	if err != nil {
-		return "", err
-	}
-	defer file.Close()
-
-	data, err := io.ReadAll(file)
-	if err != nil {
-		return "", err
-	}
-
-	return string(data), nil
 }

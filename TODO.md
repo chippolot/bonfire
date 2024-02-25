@@ -12,3 +12,4 @@
     - [ ] Server
     - [ ] DB
     - [ ] Cron
+- [ ] Play w/ open source models by abstracting out query logic

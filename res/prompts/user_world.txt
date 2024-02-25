@@ -1,0 +1,1 @@
+Generate a unique 'world' json entity for in the style of %s. This world will be the setting for all subsequently generated lore.

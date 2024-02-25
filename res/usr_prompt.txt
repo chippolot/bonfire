@@ -1,1 +1,0 @@
-Generate a unique dark souls-like %s json entity.
